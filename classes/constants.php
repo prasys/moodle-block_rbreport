@@ -31,4 +31,19 @@ class constants {
     const LAYOUT_CARDS = 'cards';
     /** Always display as table. */
     const LAYOUT_TABLE = 'table';
+    /** Always display as chart. */
+    const LAYOUT_CHART = 'chart';
+
+    /** Display bar chart. */
+    const CHARTTYPE_BAR = 'bar';
+    /** Display stacked bar chart. */
+    const CHARTTYPE_BAR_STACKED = 'bar_stacked';
+    /** Display horizontal bar chart. */
+    const CHARTTYPE_BAR_HORIZONTAL = 'bar_horizontal';
+    /** Display line chart. */
+    const CHARTTYPE_LINE = 'line';
+    /** Display pie chart. */
+    const CHARTTYPE_PIE = 'pie';
+    /** Display doughnut chart. */
+    const CHARTTYPE_DOUGHNUT = 'doughnut';
 }

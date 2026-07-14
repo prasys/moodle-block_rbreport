@@ -25,15 +25,30 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['charttypebar'] = 'Bar';
+$string['charttypebarhorizontal'] = 'Horizontal Bar';
+$string['charttypebarstacked'] = 'Stacked Bar';
+$string['charttypedoughnut'] = 'Doughnut';
+$string['charttypeline'] = 'Line';
+$string['charttypepie'] = 'Pie';
+$string['configchartmax'] = 'Maximum';
+$string['configchartmin'] = 'Minimum';
+$string['configchartpiepercent'] = 'Use percentage for Pie charts';
+$string['configchartstepsize'] = 'Step size';
+$string['configcharttype'] = 'Chart type';
+$string['configcumulative'] = 'Accumulate data successively';
 $string['configlayout'] = 'Layout';
 $string['configlayout_help'] = '**Adaptive:** Display as cards only in small blocks<br>
 **Cards:** Always display as cards<br>
 **Table:** Always display as table';
 $string['configreport'] = 'Select report';
 $string['configreport_help'] = 'Custom report that will be embedded into the block';
+$string['configsetminmax'] = 'Set minimum and maximum values for Y axis';
+$string['configsetstepsize'] = 'Set step size value for Y axis';
 $string['configtitle'] = 'Block title';
 $string['displayadaptive'] = 'Adaptive';
 $string['displayascards'] = 'Cards';
+$string['displayaschart'] = 'Chart';
 $string['displayastable'] = 'Table';
 $string['entriesperpage'] = 'Entries per page';
 $string['errormessage'] = 'Error occurred while retrieving the report';

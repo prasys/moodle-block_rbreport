@@ -42,7 +42,8 @@ class mobile {
             'title' => '',
         ];
 
-        $reportid = $blockinstance->config->corereport;
+        $reportids = $blockinstance->config->corereport ?? [];
+        $reportid = is_array($reportids) ? (int) reset($reportids) : (int) $reportids;
         try {
             $report = \core_reportbuilder\manager::get_report_from_id($reportid);
             if (\core_reportbuilder\permission::can_view_report($report->get_report_persistent())) {

@@ -9,3 +9,4 @@
 .block-region .block_rbreport .table-dynamic > div {
     scrollbar-width: thin;
 }
+.block-region .block_rbreport .chart-area .chart-image { width: auto; }
