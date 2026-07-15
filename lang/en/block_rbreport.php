@@ -31,11 +31,18 @@ $string['charttypebarstacked'] = 'Stacked Bar';
 $string['charttypedoughnut'] = 'Doughnut';
 $string['charttypeline'] = 'Line';
 $string['charttypepie'] = 'Pie';
+$string['columnnumber'] = 'Column {$a}';
+$string['configchartlabelcolumn'] = 'Chart labels (X-axis) column';
 $string['configchartmax'] = 'Maximum';
 $string['configchartmin'] = 'Minimum';
 $string['configchartpiepercent'] = 'Use percentage for Pie charts';
+$string['configchartseriescolumn'] = 'Group series by';
+$string['configchartseriescolumn_help'] = 'Each distinct value of this column becomes its own chart series. ' .
+    'Values are summed per label. Combine this with the stacked bar chart type for grouped breakdowns. ' .
+    'This option is not available for pie or doughnut charts.';
 $string['configchartstepsize'] = 'Step size';
 $string['configcharttype'] = 'Chart type';
+$string['configchartvaluecolumn'] = 'Chart values column';
 $string['configcumulative'] = 'Accumulate data successively';
 $string['configlayout'] = 'Layout';
 $string['configlayout_help'] = '**Adaptive:** Display as cards only in small blocks<br>
@@ -58,6 +65,7 @@ $string['privacy:metadata:block'] = 'The Report block stores all of its data wit
 $string['rbreport:addinstance'] = 'Add a new Report block';
 $string['rbreport:myaddinstance'] = 'Add a new Report block to Dashboard';
 $string['reportnotsetmessage'] = 'Please configure this block and select which report it should display.';
+$string['seriescolumnnone'] = 'None (one series per report)';
 $string['toomanyreportstoshow'] = 'Too many reports ({$a}) to show';
 
 // Deprecated since Moodle 5.0.4.

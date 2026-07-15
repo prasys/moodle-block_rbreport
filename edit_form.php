@@ -82,6 +82,63 @@ class block_rbreport_edit_form extends block_edit_form {
         $mform->addElement('select', 'config_charttype', get_string('configcharttype', 'block_rbreport'), $chartoptions);
         $mform->hideIf('config_charttype', 'config_layout', 'ne', constants::LAYOUT_CHART);
 
+        $columnoptions = [];
+        $configuredreports = $this->block->config->corereport ?? [];
+        $configuredreports = is_array($configuredreports) ? $configuredreports : [$configuredreports];
+        $reportid = (int) reset($configuredreports);
+        if ($reportid) {
+            try {
+                $report = \core_reportbuilder\manager::get_report_from_id($reportid);
+                if (permission::can_view_report($report->get_report_persistent())) {
+                    foreach ($report->get_active_columns_by_alias() as $column) {
+                        $heading = $column->get_persistent()->get_formatted_heading($report->get_context());
+                        $columnoptions[] = $heading !== '' ? $heading : $column->get_title();
+                    }
+                }
+            } catch (\Throwable $e) {
+                $columnoptions = [];
+            }
+        }
+        if (!$columnoptions) {
+            for ($index = 0; $index < 8; $index++) {
+                $columnoptions[$index] = get_string('columnnumber', 'block_rbreport', $index + 1);
+            }
+        }
+
+        $mform->addElement(
+            'select',
+            'config_chartlabelcolumn',
+            get_string('configchartlabelcolumn', 'block_rbreport'),
+            $columnoptions,
+        );
+        $mform->setDefault('config_chartlabelcolumn', 0);
+        $mform->setType('config_chartlabelcolumn', PARAM_INT);
+        $mform->hideIf('config_chartlabelcolumn', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
+        $mform->addElement(
+            'select',
+            'config_chartvaluecolumn',
+            get_string('configchartvaluecolumn', 'block_rbreport'),
+            $columnoptions,
+        );
+        $mform->setDefault('config_chartvaluecolumn', 1);
+        $mform->setType('config_chartvaluecolumn', PARAM_INT);
+        $mform->hideIf('config_chartvaluecolumn', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
+        $seriescolumnoptions = [-1 => get_string('seriescolumnnone', 'block_rbreport')] + $columnoptions;
+        $mform->addElement(
+            'select',
+            'config_chartseriescolumn',
+            get_string('configchartseriescolumn', 'block_rbreport'),
+            $seriescolumnoptions,
+        );
+        $mform->setDefault('config_chartseriescolumn', -1);
+        $mform->setType('config_chartseriescolumn', PARAM_INT);
+        $mform->addHelpButton('config_chartseriescolumn', 'configchartseriescolumn', 'block_rbreport');
+        $mform->hideIf('config_chartseriescolumn', 'config_layout', 'ne', constants::LAYOUT_CHART);
+        $mform->hideIf('config_chartseriescolumn', 'config_charttype', 'eq', constants::CHARTTYPE_PIE);
+        $mform->hideIf('config_chartseriescolumn', 'config_charttype', 'eq', constants::CHARTTYPE_DOUGHNUT);
+
         $mform->addElement('advcheckbox', 'config_cumulative', get_string('configcumulative', 'block_rbreport'));
         $mform->hideIf('config_cumulative', 'config_layout', 'ne', constants::LAYOUT_CHART);
 

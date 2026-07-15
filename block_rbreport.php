@@ -189,6 +189,9 @@ class block_rbreport extends block_base {
         $chartmax = $this->config->chartmax ?? null;
         $setstepsize = !empty($this->config->setstepsize ?? false);
         $chartstepsize = $this->config->chartstepsize ?? null;
+        $labelidx = (int) ($this->config->chartlabelcolumn ?? 0);
+        $valueidx = (int) ($this->config->chartvaluecolumn ?? 1);
+        $groupidx = (int) ($this->config->chartseriescolumn ?? -1);
         switch ($charttype) {
             case constants::CHARTTYPE_BAR:
                 $chart = new core\chart_bar();
@@ -233,7 +236,9 @@ class block_rbreport extends block_base {
         $allseries = [];
         $labels = [];
         $headers = [];
-        foreach ($this->get_report_ids() as $key => $id) {
+        $groupedserieskeys = [];
+        $reportids = $this->get_report_ids();
+        foreach ($reportids as $key => $id) {
             $report = $this->get_core_report($key);
             if ($report === null) {
                 continue;
@@ -250,6 +255,12 @@ class block_rbreport extends block_base {
             $table->query_db(0);
 
             $columns = array_keys($report->get_active_columns_by_alias());
+            $columncount = count($columns);
+            $reportlabelidx = $labelidx >= 0 && $labelidx < $columncount ? $labelidx : 0;
+            $reportvalueidx = $valueidx >= 0 && $valueidx < $columncount ? $valueidx : min(1, $columncount - 1);
+            $reportgroupidx = $groupidx >= 0 && $groupidx < $columncount ? $groupidx : -1;
+            $grouping = $reportgroupidx >= 0 && $charttype !== constants::CHARTTYPE_PIE &&
+                $charttype !== constants::CHARTTYPE_DOUGHNUT;
             $series = [];
             $serieskey = count($allseries);
             if (($charttype === constants::CHARTTYPE_PIE || $charttype === constants::CHARTTYPE_DOUGHNUT) &&
@@ -259,15 +270,15 @@ class block_rbreport extends block_base {
                 foreach ($table->rawdata as $row) {
                     $arrayrow = (array) $row;
                     $formattedrow = $table->format_row($row);
-                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[1]]));
+                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
                     $total += $value;
                     $data[] = $arrayrow;
                 }
                 foreach ($data as $arrayrow) {
-                    $index = reset($arrayrow);
+                    $index = $arrayrow[$columns[$reportlabelidx]];
                     $formattedrow = $table->format_row((object) $arrayrow);
-                    $label = strip_tags($formattedrow[$columns[0]]);
-                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[1]]));
+                    $label = strip_tags($formattedrow[$columns[$reportlabelidx]]);
+                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
                     $series[$index] = floatval(number_format(($value / $total) * 100, 2));
                     if (!isset($labels[$index])) {
                         $labels[$index] = $label;
@@ -276,13 +287,40 @@ class block_rbreport extends block_base {
                         $allseries[$serieskey - 1][$index] = 0;
                     }
                 }
+                $headers[] = $table->headers[$reportvalueidx];
+                $allseries[$serieskey] = $series;
+            } else if ($grouping) {
+                $reportseries = [];
+                foreach ($table->rawdata as $row) {
+                    $arrayrow = (array) $row;
+                    $index = $arrayrow[$columns[$reportlabelidx]];
+                    $formattedrow = $table->format_row($row);
+                    $label = strip_tags($formattedrow[$columns[$reportlabelidx]]);
+                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
+                    $groupname = strip_tags($formattedrow[$columns[$reportgroupidx]]);
+                    $groupname = $groupname === '' ? '-' : $groupname;
+                    $reportseries[$groupname][$index] = ($reportseries[$groupname][$index] ?? 0) + $value;
+                    if (!isset($labels[$index])) {
+                        $labels[$index] = $label;
+                    }
+                }
+                foreach ($reportseries as $groupname => $groupseries) {
+                    $serieskey = count($allseries);
+                    $header = $groupname;
+                    if (count($reportids) > 1) {
+                        $header = $report->get_report_persistent()->get_formatted_name() . ': ' . $groupname;
+                    }
+                    $headers[$serieskey] = $header;
+                    $allseries[$serieskey] = $groupseries;
+                    $groupedserieskeys[$serieskey] = true;
+                }
             } else {
                 foreach ($table->rawdata as $row) {
                     $arrayrow = (array) $row;
-                    $index = reset($arrayrow);
+                    $index = $arrayrow[$columns[$reportlabelidx]];
                     $formattedrow = $table->format_row($row);
-                    $label = strip_tags($formattedrow[$columns[0]]);
-                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[1]]));
+                    $label = strip_tags($formattedrow[$columns[$reportlabelidx]]);
+                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
                     if ($cumulative && $index > 0) {
                         $series[$index] = end($series) + $value;
                     } else {
@@ -292,9 +330,9 @@ class block_rbreport extends block_base {
                         $labels[$index] = $label;
                     }
                 }
+                $headers[] = $table->headers[$reportvalueidx];
+                $allseries[$serieskey] = $series;
             }
-            $headers[] = $table->headers[1];
-            $allseries[$serieskey] = $series;
         }
 
         ksort($labels);
@@ -302,7 +340,7 @@ class block_rbreport extends block_base {
         foreach ($labels as $labelkey => $label) {
             foreach ($allseries as $serieskey => $series) {
                 if (!isset($series[$labelkey])) {
-                    if ($cumulative && !empty($lastlabel)) {
+                    if ($cumulative && !isset($groupedserieskeys[$serieskey]) && !empty($lastlabel)) {
                         $lastkey = null;
                         foreach ($series as $key => $value) {
                             if ($key < $labelkey) {
@@ -325,6 +363,13 @@ class block_rbreport extends block_base {
         }
         foreach ($allseries as $key => $series) {
             ksort($series);
+            if ($cumulative && isset($groupedserieskeys[$key])) {
+                $runningtotal = 0;
+                foreach ($series as $labelkey => $value) {
+                    $runningtotal += $value;
+                    $series[$labelkey] = $runningtotal;
+                }
+            }
             $chart->add_series(new core\chart_series($headers[$key], array_values($series)));
         }
 
