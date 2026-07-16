@@ -32,6 +32,10 @@ $string['charttypedoughnut'] = 'Doughnut';
 $string['charttypeline'] = 'Line';
 $string['charttypepie'] = 'Pie';
 $string['columnnumber'] = 'Column {$a}';
+$string['configchartexcludeempty'] = 'Exclude empty values';
+$string['configchartexcludeempty_help'] = 'Skip rows from the chart when the label, series/group value, or split value ' .
+    'is blank. This is useful for excluding accounts with no data, such as administrators.';
+$string['configchartexcludezero'] = 'Exclude zero values';
 $string['configchartlabelcolumn'] = 'Chart labels (X-axis) column';
 $string['configchartlineseries'] = 'Line series';
 $string['configchartlineseries_help'] = 'Comma-separated series names to render as lines on bar or stacked bar charts. ' .

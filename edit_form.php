@@ -176,6 +176,21 @@ class block_rbreport_edit_form extends block_edit_form {
         $mform->addHelpButton('config_chartsplitcolumn', 'configchartsplitcolumn', 'block_rbreport');
         $mform->hideIf('config_chartsplitcolumn', 'config_layout', 'ne', constants::LAYOUT_CHART);
 
+        $mform->addElement(
+            'advcheckbox',
+            'config_chartexcludeempty',
+            get_string('configchartexcludeempty', 'block_rbreport'),
+        );
+        $mform->addHelpButton('config_chartexcludeempty', 'configchartexcludeempty', 'block_rbreport');
+        $mform->hideIf('config_chartexcludeempty', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
+        $mform->addElement(
+            'advcheckbox',
+            'config_chartexcludezero',
+            get_string('configchartexcludezero', 'block_rbreport'),
+        );
+        $mform->hideIf('config_chartexcludezero', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
         $mform->addElement('advcheckbox', 'config_cumulative', get_string('configcumulative', 'block_rbreport'));
         $mform->hideIf('config_cumulative', 'config_layout', 'ne', constants::LAYOUT_CHART);
 

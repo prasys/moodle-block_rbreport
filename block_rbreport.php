@@ -189,6 +189,8 @@ class block_rbreport extends block_base {
         $valueidx = (int) ($this->config->chartvaluecolumn ?? 1);
         $groupidx = (int) ($this->config->chartseriescolumn ?? -1);
         $splitidx = (int) ($this->config->chartsplitcolumn ?? -1);
+        $chartexcludeempty = !empty($this->config->chartexcludeempty ?? false);
+        $chartexcludezero = !empty($this->config->chartexcludezero ?? false);
         $splitting = $splitidx >= 0;
         $reportids = $this->get_report_ids();
         $reports = [];
@@ -231,6 +233,20 @@ class block_rbreport extends block_base {
                 $formattedrow = $table->format_row($row);
                 $rawsplit = $reportsplitidx >= 0 ? $arrayrow[$columns[$reportsplitidx]] : '';
                 $formattedsplit = $reportsplitidx >= 0 ? strip_tags($formattedrow[$columns[$reportsplitidx]]) : '';
+                $formattedlabel = strip_tags($formattedrow[$columns[$reportlabelidx]]);
+                $formattedvalue = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
+                $formattedgroup = $reportgroupidx >= 0
+                    ? strip_tags($formattedrow[$columns[$reportgroupidx]]) : '';
+
+                if ($chartexcludeempty && ($formattedlabel === '' ||
+                        ($reports[$key]['grouping'] && $formattedgroup === '') ||
+                        ($reportsplitidx >= 0 && $formattedsplit === ''))) {
+                    continue;
+                }
+                if ($chartexcludezero && $formattedvalue === 0.0) {
+                    continue;
+                }
+
                 if (!isset($buckets[$rawsplit])) {
                     $buckets[$rawsplit] = ['name' => $formattedsplit, 'rows' => []];
                 }
@@ -239,10 +255,9 @@ class block_rbreport extends block_base {
                     'reportname' => $reports[$key]['name'],
                     'header' => $reports[$key]['header'],
                     'index' => $arrayrow[$columns[$reportlabelidx]],
-                    'label' => strip_tags($formattedrow[$columns[$reportlabelidx]]),
-                    'value' => floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]])),
-                    'group' => $reportgroupidx >= 0
-                        ? strip_tags($formattedrow[$columns[$reportgroupidx]]) : '',
+                    'label' => $formattedlabel,
+                    'value' => $formattedvalue,
+                    'group' => $formattedgroup,
                     'rawsplit' => $rawsplit,
                     'split' => $formattedsplit,
                 ];

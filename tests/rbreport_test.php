@@ -63,6 +63,8 @@ final class rbreport_test extends advanced_testcase {
             'title' => 'Block title',
             'corereport' => $report->get('id'),
             'layout' => constants::LAYOUT_CARDS,
+            'chartexcludeempty' => 1,
+            'chartexcludezero' => 1,
             'chartlabelcolumn' => 2,
             'chartlineseries' => 'R1',
             'chartseriesnames' => 'R1 = Report one',
@@ -86,6 +88,8 @@ final class rbreport_test extends advanced_testcase {
         $this->assertEquals($data->title, $config->instance->title);
         $this->assertEquals($data->corereport, $config->instance->corereport);
         $this->assertEquals($data->layout, $config->instance->layout);
+        $this->assertEquals($data->chartexcludeempty, $config->instance->chartexcludeempty);
+        $this->assertEquals($data->chartexcludezero, $config->instance->chartexcludezero);
         $this->assertEquals($data->chartlabelcolumn, $config->instance->chartlabelcolumn);
         $this->assertEquals($data->chartlineseries, $config->instance->chartlineseries);
         $this->assertEquals($data->chartseriesnames, $config->instance->chartseriesnames);
