@@ -139,6 +139,43 @@ class block_rbreport_edit_form extends block_edit_form {
         $mform->hideIf('config_chartseriescolumn', 'config_charttype', 'eq', constants::CHARTTYPE_PIE);
         $mform->hideIf('config_chartseriescolumn', 'config_charttype', 'eq', constants::CHARTTYPE_DOUGHNUT);
 
+        $mform->addElement('text', 'config_chartxaxislabel', get_string('configchartxaxislabel', 'block_rbreport'));
+        $mform->setType('config_chartxaxislabel', PARAM_TEXT);
+        $mform->hideIf('config_chartxaxislabel', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
+        $mform->addElement('text', 'config_chartyaxislabel', get_string('configchartyaxislabel', 'block_rbreport'));
+        $mform->setType('config_chartyaxislabel', PARAM_TEXT);
+        $mform->hideIf('config_chartyaxislabel', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
+        $mform->addElement('textarea', 'config_chartseriesnames', get_string('configchartseriesnames', 'block_rbreport'));
+        $mform->setType('config_chartseriesnames', PARAM_TEXT);
+        $mform->addHelpButton('config_chartseriesnames', 'configchartseriesnames', 'block_rbreport');
+        $mform->hideIf('config_chartseriesnames', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
+        $mform->addElement('text', 'config_chartlineseries', get_string('configchartlineseries', 'block_rbreport'));
+        $mform->setType('config_chartlineseries', PARAM_TEXT);
+        $mform->addHelpButton('config_chartlineseries', 'configchartlineseries', 'block_rbreport');
+        $mform->hideIf('config_chartlineseries', 'config_layout', 'ne', constants::LAYOUT_CHART);
+        $mform->hideIf(
+            'config_chartlineseries',
+            'config_charttype',
+            'in',
+            constants::CHARTTYPE_LINE . '|' . constants::CHARTTYPE_PIE . '|' . constants::CHARTTYPE_DOUGHNUT . '|' .
+                constants::CHARTTYPE_BAR_HORIZONTAL,
+        );
+
+        $splitcolumnoptions = [-1 => get_string('splitcolumnnone', 'block_rbreport')] + $columnoptions;
+        $mform->addElement(
+            'select',
+            'config_chartsplitcolumn',
+            get_string('configchartsplitcolumn', 'block_rbreport'),
+            $splitcolumnoptions,
+        );
+        $mform->setDefault('config_chartsplitcolumn', -1);
+        $mform->setType('config_chartsplitcolumn', PARAM_INT);
+        $mform->addHelpButton('config_chartsplitcolumn', 'configchartsplitcolumn', 'block_rbreport');
+        $mform->hideIf('config_chartsplitcolumn', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
         $mform->addElement('advcheckbox', 'config_cumulative', get_string('configcumulative', 'block_rbreport'));
         $mform->hideIf('config_cumulative', 'config_layout', 'ne', constants::LAYOUT_CHART);
 

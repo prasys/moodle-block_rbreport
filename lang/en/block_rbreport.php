@@ -33,6 +33,9 @@ $string['charttypeline'] = 'Line';
 $string['charttypepie'] = 'Pie';
 $string['columnnumber'] = 'Column {$a}';
 $string['configchartlabelcolumn'] = 'Chart labels (X-axis) column';
+$string['configchartlineseries'] = 'Line series';
+$string['configchartlineseries_help'] = 'Comma-separated series names to render as lines on bar or stacked bar charts. ' .
+    'Names can be either the original or renamed series names.';
 $string['configchartmax'] = 'Maximum';
 $string['configchartmin'] = 'Minimum';
 $string['configchartpiepercent'] = 'Use percentage for Pie charts';
@@ -40,9 +43,16 @@ $string['configchartseriescolumn'] = 'Group series by';
 $string['configchartseriescolumn_help'] = 'Each distinct value of this column becomes its own chart series. ' .
     'Values are summed per label. Combine this with the stacked bar chart type for grouped breakdowns. ' .
     'This option is not available for pie or doughnut charts.';
+$string['configchartseriesnames'] = 'Rename chart series';
+$string['configchartseriesnames_help'] = 'Enter one mapping per line in the format "original = new". ' .
+    'Series without a matching original name keep their existing names.';
+$string['configchartsplitcolumn'] = 'Split charts by';
+$string['configchartsplitcolumn_help'] = 'Create one chart for each distinct value of this column.';
 $string['configchartstepsize'] = 'Step size';
 $string['configcharttype'] = 'Chart type';
 $string['configchartvaluecolumn'] = 'Chart values column';
+$string['configchartxaxislabel'] = 'X-axis label';
+$string['configchartyaxislabel'] = 'Y-axis label';
 $string['configcumulative'] = 'Accumulate data successively';
 $string['configlayout'] = 'Layout';
 $string['configlayout_help'] = '**Adaptive:** Display as cards only in small blocks<br>
@@ -66,6 +76,8 @@ $string['rbreport:addinstance'] = 'Add a new Report block';
 $string['rbreport:myaddinstance'] = 'Add a new Report block to Dashboard';
 $string['reportnotsetmessage'] = 'Please configure this block and select which report it should display.';
 $string['seriescolumnnone'] = 'None (one series per report)';
+$string['splitcolumnnone'] = 'None (single chart)';
+$string['toomanycharts'] = 'Too many charts ({$a}) to show';
 $string['toomanyreportstoshow'] = 'Too many reports ({$a}) to show';
 
 // Deprecated since Moodle 5.0.4.

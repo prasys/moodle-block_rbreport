@@ -28,6 +28,9 @@ use core_table\local\filter\integer_filter;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class block_rbreport extends block_base {
+    /** Maximum number of charts rendered when splitting by a column. */
+    public const MAX_SPLIT_CHARTS = 12;
+
     /** @var stdClass $content */
     public $content = null;
 
@@ -182,16 +185,107 @@ class block_rbreport extends block_base {
         global $OUTPUT;
 
         $charttype = $this->config->charttype ?? constants::CHARTTYPE_BAR;
-        $cumulative = !empty($this->config->cumulative ?? false);
-        $chartpiepercent = !empty($this->config->chartpiepercent ?? false);
-        $setminmax = !empty($this->config->setminmax ?? false);
-        $chartmin = $this->config->chartmin ?? null;
-        $chartmax = $this->config->chartmax ?? null;
-        $setstepsize = !empty($this->config->setstepsize ?? false);
-        $chartstepsize = $this->config->chartstepsize ?? null;
         $labelidx = (int) ($this->config->chartlabelcolumn ?? 0);
         $valueidx = (int) ($this->config->chartvaluecolumn ?? 1);
         $groupidx = (int) ($this->config->chartseriescolumn ?? -1);
+        $splitidx = (int) ($this->config->chartsplitcolumn ?? -1);
+        $splitting = $splitidx >= 0;
+        $reportids = $this->get_report_ids();
+        $reports = [];
+        $buckets = $splitting ? [] : ['' => ['name' => '', 'rows' => []]];
+
+        foreach ($reportids as $key => $id) {
+            $report = $this->get_core_report($key);
+            if ($report === null) {
+                continue;
+            }
+
+            // Store the pagesize in the table filterset so it is available between AJAX requests.
+            $filterset = new custom_report_table_view_filterset();
+            $filterset->add_filter(new integer_filter('pagesize', null, [(int) ($this->config->pagesize ?? 0)]));
+
+            $table = custom_report_table_view::create($report->get_report_persistent()->get('id'));
+            $table->set_filterset($filterset);
+            $table->pagesize = 0;
+            $table->setup();
+            $table->query_db(0);
+
+            $columns = array_keys($report->get_active_columns_by_alias());
+            $columncount = count($columns);
+            $reportlabelidx = $labelidx >= 0 && $labelidx < $columncount ? $labelidx : 0;
+            $reportvalueidx = $valueidx >= 0 && $valueidx < $columncount ? $valueidx : min(1, $columncount - 1);
+            $reportgroupidx = $groupidx >= 0 && $groupidx < $columncount ? $groupidx : -1;
+            $reports[$key] = [
+                'header' => $table->headers[$reportvalueidx],
+                'name' => $report->get_report_persistent()->get_formatted_name(),
+                'grouping' => $reportgroupidx >= 0 && $charttype !== constants::CHARTTYPE_PIE &&
+                    $charttype !== constants::CHARTTYPE_DOUGHNUT,
+            ];
+            $reportsplitidx = $splitidx >= 0 && $splitidx < $columncount ? $splitidx : -1;
+            if ($reportsplitidx < 0 && !isset($buckets[''])) {
+                $buckets[''] = ['name' => '', 'rows' => []];
+            }
+
+            foreach ($table->rawdata as $row) {
+                $arrayrow = (array) $row;
+                $formattedrow = $table->format_row($row);
+                $rawsplit = $reportsplitidx >= 0 ? $arrayrow[$columns[$reportsplitidx]] : '';
+                $formattedsplit = $reportsplitidx >= 0 ? strip_tags($formattedrow[$columns[$reportsplitidx]]) : '';
+                if (!isset($buckets[$rawsplit])) {
+                    $buckets[$rawsplit] = ['name' => $formattedsplit, 'rows' => []];
+                }
+                $buckets[$rawsplit]['rows'][] = [
+                    'reportkey' => $key,
+                    'reportname' => $reports[$key]['name'],
+                    'header' => $reports[$key]['header'],
+                    'index' => $arrayrow[$columns[$reportlabelidx]],
+                    'label' => strip_tags($formattedrow[$columns[$reportlabelidx]]),
+                    'value' => floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]])),
+                    'group' => $reportgroupidx >= 0
+                        ? strip_tags($formattedrow[$columns[$reportgroupidx]]) : '',
+                    'rawsplit' => $rawsplit,
+                    'split' => $formattedsplit,
+                ];
+            }
+        }
+
+        ksort($buckets);
+        $bucketcount = count($buckets);
+        $html = '';
+        foreach (array_slice($buckets, 0, self::MAX_SPLIT_CHARTS, true) as $bucket) {
+            $chart = $this->build_chart($bucket['rows'], $reports, count($reportids), $splitting, $bucket['name']);
+            $html .= '<div class="container-fluid">' . $OUTPUT->render_chart($chart) . '</div>';
+        }
+        if ($bucketcount > self::MAX_SPLIT_CHARTS) {
+            $html .= html_writer::div(
+                get_string('toomanycharts', 'block_rbreport', $bucketcount),
+                'alert alert-warning',
+            );
+        }
+
+        return $html;
+    }
+
+    /**
+     * Build a chart for a normalized set of report rows.
+     *
+     * @param array $rows Normalized report rows
+     * @param array $reports Report metadata, keyed by configured report position
+     * @param int $reportcount Number of configured reports
+     * @param bool $splitting Whether the chart is one of multiple split charts
+     * @param string $splitname Formatted split value
+     * @return \core\chart_base
+     */
+    protected function build_chart(
+        array $rows,
+        array $reports,
+        int $reportcount,
+        bool $splitting = false,
+        string $splitname = '',
+    ): \core\chart_base {
+        $charttype = $this->config->charttype ?? constants::CHARTTYPE_BAR;
+        $cumulative = !empty($this->config->cumulative ?? false);
+        $chartpiepercent = !empty($this->config->chartpiepercent ?? false);
         switch ($charttype) {
             case constants::CHARTTYPE_BAR:
                 $chart = new core\chart_bar();
@@ -218,119 +312,88 @@ class block_rbreport extends block_base {
                 $chart = new core\chart_bar();
         }
 
-        if ($setminmax) {
-            if (!empty($chartmin)) {
+        if (!empty($this->config->setminmax ?? false)) {
+            if (!empty($this->config->chartmin ?? null)) {
                 $yaxis = $chart->get_yaxis(0, true);
-                $yaxis->set_min($chartmin);
+                $yaxis->set_min($this->config->chartmin);
             }
-            if (!empty($chartmax)) {
+            if (!empty($this->config->chartmax ?? null)) {
                 $yaxis = $chart->get_yaxis(0, true);
-                $yaxis->set_max($chartmax);
+                $yaxis->set_max($this->config->chartmax);
             }
         }
-        if ($setstepsize && !empty($chartstepsize)) {
+        if (!empty($this->config->setstepsize ?? false) && !empty($this->config->chartstepsize ?? null)) {
             $yaxis = $chart->get_yaxis(0, true);
-            $yaxis->set_stepsize($chartstepsize);
+            $yaxis->set_stepsize($this->config->chartstepsize);
+        }
+        if ((string) ($this->config->chartxaxislabel ?? '') !== '') {
+            $chart->get_xaxis(0, true)->set_label($this->config->chartxaxislabel);
+        }
+        if ((string) ($this->config->chartyaxislabel ?? '') !== '') {
+            $chart->get_yaxis(0, true)->set_label($this->config->chartyaxislabel);
+        }
+        if ($splitting) {
+            $chart->set_title($splitname === '' ? '-' : $splitname);
         }
 
         $allseries = [];
         $labels = [];
         $headers = [];
         $groupedserieskeys = [];
-        $reportids = $this->get_report_ids();
-        foreach ($reportids as $key => $id) {
-            $report = $this->get_core_report($key);
-            if ($report === null) {
-                continue;
-            }
-
-            // Store the pagesize in the table filterset so it is available between AJAX requests.
-            $filterset = new custom_report_table_view_filterset();
-            $filterset->add_filter(new integer_filter('pagesize', null, [(int) ($this->config->pagesize ?? 0)]));
-
-            $table = custom_report_table_view::create($report->get_report_persistent()->get('id'));
-            $table->set_filterset($filterset);
-            $table->pagesize = 0;
-            $table->setup();
-            $table->query_db(0);
-
-            $columns = array_keys($report->get_active_columns_by_alias());
-            $columncount = count($columns);
-            $reportlabelidx = $labelidx >= 0 && $labelidx < $columncount ? $labelidx : 0;
-            $reportvalueidx = $valueidx >= 0 && $valueidx < $columncount ? $valueidx : min(1, $columncount - 1);
-            $reportgroupidx = $groupidx >= 0 && $groupidx < $columncount ? $groupidx : -1;
-            $grouping = $reportgroupidx >= 0 && $charttype !== constants::CHARTTYPE_PIE &&
-                $charttype !== constants::CHARTTYPE_DOUGHNUT;
+        foreach ($reports as $key => $report) {
+            $reportrows = array_filter($rows, static fn(array $row): bool => $row['reportkey'] === $key);
             $series = [];
             $serieskey = count($allseries);
             if (($charttype === constants::CHARTTYPE_PIE || $charttype === constants::CHARTTYPE_DOUGHNUT) &&
                     $chartpiepercent) {
                 $total = 0;
-                $data = [];
-                foreach ($table->rawdata as $row) {
-                    $arrayrow = (array) $row;
-                    $formattedrow = $table->format_row($row);
-                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
-                    $total += $value;
-                    $data[] = $arrayrow;
+                foreach ($reportrows as $row) {
+                    $total += $row['value'];
                 }
-                foreach ($data as $arrayrow) {
-                    $index = $arrayrow[$columns[$reportlabelidx]];
-                    $formattedrow = $table->format_row((object) $arrayrow);
-                    $label = strip_tags($formattedrow[$columns[$reportlabelidx]]);
-                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
-                    $series[$index] = floatval(number_format(($value / $total) * 100, 2));
-                    if (!isset($labels[$index])) {
-                        $labels[$index] = $label;
+                foreach ($reportrows as $row) {
+                    $series[$row['index']] = floatval(number_format(($row['value'] / $total) * 100, 2));
+                    if (!isset($labels[$row['index']])) {
+                        $labels[$row['index']] = $row['label'];
                     }
-                    if ($serieskey > 0 && !isset($allseries[$serieskey - 1][$index])) {
-                        $allseries[$serieskey - 1][$index] = 0;
+                    if ($serieskey > 0 && !isset($allseries[$serieskey - 1][$row['index']])) {
+                        $allseries[$serieskey - 1][$row['index']] = 0;
                     }
                 }
-                $headers[] = $table->headers[$reportvalueidx];
+                $headers[] = $report['header'];
                 $allseries[$serieskey] = $series;
-            } else if ($grouping) {
+            } else if ($report['grouping']) {
                 $reportseries = [];
-                foreach ($table->rawdata as $row) {
-                    $arrayrow = (array) $row;
-                    $index = $arrayrow[$columns[$reportlabelidx]];
-                    $formattedrow = $table->format_row($row);
-                    $label = strip_tags($formattedrow[$columns[$reportlabelidx]]);
-                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
-                    $groupname = strip_tags($formattedrow[$columns[$reportgroupidx]]);
+                foreach ($reportrows as $row) {
+                    $groupname = $row['group'];
                     $groupname = $groupname === '' ? '-' : $groupname;
-                    $reportseries[$groupname][$index] = ($reportseries[$groupname][$index] ?? 0) + $value;
-                    if (!isset($labels[$index])) {
-                        $labels[$index] = $label;
+                    $reportseries[$groupname][$row['index']] =
+                        ($reportseries[$groupname][$row['index']] ?? 0) + $row['value'];
+                    if (!isset($labels[$row['index']])) {
+                        $labels[$row['index']] = $row['label'];
                     }
                 }
                 foreach ($reportseries as $groupname => $groupseries) {
                     $serieskey = count($allseries);
                     $header = $groupname;
-                    if (count($reportids) > 1) {
-                        $header = $report->get_report_persistent()->get_formatted_name() . ': ' . $groupname;
+                    if ($reportcount > 1) {
+                        $header = $report['name'] . ': ' . $groupname;
                     }
                     $headers[$serieskey] = $header;
                     $allseries[$serieskey] = $groupseries;
                     $groupedserieskeys[$serieskey] = true;
                 }
             } else {
-                foreach ($table->rawdata as $row) {
-                    $arrayrow = (array) $row;
-                    $index = $arrayrow[$columns[$reportlabelidx]];
-                    $formattedrow = $table->format_row($row);
-                    $label = strip_tags($formattedrow[$columns[$reportlabelidx]]);
-                    $value = floatval(str_replace(',', '.', $formattedrow[$columns[$reportvalueidx]]));
-                    if ($cumulative && $index > 0) {
-                        $series[$index] = end($series) + $value;
+                foreach ($reportrows as $row) {
+                    if ($cumulative && $row['index'] > 0) {
+                        $series[$row['index']] = end($series) + $row['value'];
                     } else {
-                        $series[$index] = $value;
+                        $series[$row['index']] = $row['value'];
                     }
-                    if (!isset($labels[$index])) {
-                        $labels[$index] = $label;
+                    if (!isset($labels[$row['index']])) {
+                        $labels[$row['index']] = $row['label'];
                     }
                 }
-                $headers[] = $table->headers[$reportvalueidx];
+                $headers[] = $report['header'];
                 $allseries[$serieskey] = $series;
             }
         }
@@ -370,10 +433,53 @@ class block_rbreport extends block_base {
                     $series[$labelkey] = $runningtotal;
                 }
             }
-            $chart->add_series(new core\chart_series($headers[$key], array_values($series)));
+            $originalheader = $headers[$key];
+            $header = $this->get_chart_series_name($originalheader);
+            $seriesobj = new core\chart_series($header, array_values($series));
+            if (($charttype === constants::CHARTTYPE_BAR || $charttype === constants::CHARTTYPE_BAR_STACKED) &&
+                    $this->is_chart_line_series($originalheader, $header)) {
+                $seriesobj->set_type(\core\chart_series::TYPE_LINE);
+            }
+            $chart->add_series($seriesobj);
         }
 
         $chart->set_labels(array_values($labels));
-        return '<div class="container-fluid">' . $OUTPUT->render_chart($chart) . '</div>';
+        return $chart;
+    }
+
+    /**
+     * Apply a configured series name mapping.
+     *
+     * @param string $originalname Original series name
+     * @return string
+     */
+    private function get_chart_series_name(string $originalname): string {
+        $lines = preg_split('/\R/', (string) ($this->config->chartseriesnames ?? ''));
+        foreach ($lines as $line) {
+            $parts = explode('=', $line, 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+            [$original, $new] = array_map('trim', $parts);
+            if ($original !== '' && $new !== '' && $original === $originalname) {
+                return $new;
+            }
+        }
+        return $originalname;
+    }
+
+    /**
+     * Whether a series is configured to render as a line.
+     *
+     * @param string $originalname Original series name
+     * @param string $renamedname Renamed series name
+     * @return bool
+     */
+    private function is_chart_line_series(string $originalname, string $renamedname): bool {
+        $names = array_filter(
+            array_map('trim', explode(',', (string) ($this->config->chartlineseries ?? ''))),
+            static fn(string $name): bool => $name !== '',
+        );
+        return in_array($originalname, $names, true) || in_array($renamedname, $names, true);
     }
 }

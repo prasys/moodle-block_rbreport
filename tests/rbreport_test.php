@@ -64,8 +64,13 @@ final class rbreport_test extends advanced_testcase {
             'corereport' => $report->get('id'),
             'layout' => constants::LAYOUT_CARDS,
             'chartlabelcolumn' => 2,
+            'chartlineseries' => 'R1',
+            'chartseriesnames' => 'R1 = Report one',
             'chartvaluecolumn' => 1,
             'chartseriescolumn' => 3,
+            'chartsplitcolumn' => 4,
+            'chartxaxislabel' => 'Users',
+            'chartyaxislabel' => 'Count',
             'pagesize' => 10,
         ];
         $block->instance_config_save($data);
@@ -82,9 +87,106 @@ final class rbreport_test extends advanced_testcase {
         $this->assertEquals($data->corereport, $config->instance->corereport);
         $this->assertEquals($data->layout, $config->instance->layout);
         $this->assertEquals($data->chartlabelcolumn, $config->instance->chartlabelcolumn);
+        $this->assertEquals($data->chartlineseries, $config->instance->chartlineseries);
+        $this->assertEquals($data->chartseriesnames, $config->instance->chartseriesnames);
         $this->assertEquals($data->chartvaluecolumn, $config->instance->chartvaluecolumn);
         $this->assertEquals($data->chartseriescolumn, $config->instance->chartseriescolumn);
+        $this->assertEquals($data->chartsplitcolumn, $config->instance->chartsplitcolumn);
+        $this->assertEquals($data->chartxaxislabel, $config->instance->chartxaxislabel);
+        $this->assertEquals($data->chartyaxislabel, $config->instance->chartyaxislabel);
         $this->assertEquals($data->pagesize, $config->instance->pagesize);
+    }
+
+    /**
+     * Test splitting a report into multiple charts.
+     */
+    public function test_split_report_into_multiple_charts(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $this->getDataGenerator()->create_user(['username' => 'splituser1']);
+        $this->getDataGenerator()->create_user(['username' => 'splituser2']);
+        $this->getDataGenerator()->create_user(['username' => 'splituser3']);
+
+        /** @var \core_reportbuilder_generator $rbgenerator */
+        $rbgenerator = $this->getDataGenerator()->get_plugin_generator('core_reportbuilder');
+        if (\core_component::get_component_directory('tool_tenant')) {
+            $defaulttenantid = \tool_tenant\tenancy::get_default_tenant_id();
+            $report = $rbgenerator->create_report([
+                'source' => users::class,
+                'component' => 'tool_tenant',
+                'itemid' => $defaulttenantid,
+                'name' => 'Split users',
+            ]);
+        } else {
+            $report = $rbgenerator->create_report(['source' => users::class, 'name' => 'Split users']);
+        }
+
+        $course = $this->getDataGenerator()->create_course();
+        $block = $this->create_block($course);
+        $block->instance_config_save((object) [
+            'title' => 'Split users block',
+            'corereport' => $report->get('id'),
+            'layout' => constants::LAYOUT_CHART,
+            'charttype' => constants::CHARTTYPE_BAR,
+            'chartlabelcolumn' => 0,
+            'chartvaluecolumn' => 1,
+            'chartseriescolumn' => -1,
+            'chartsplitcolumn' => 1,
+        ]);
+
+        // Reload the block so the saved configuration is applied.
+        $page = self::construct_page($course);
+        $page->blocks->load_blocks();
+        $blocks = $page->blocks->get_blocks_for_region($page->blocks->get_default_region());
+        $block = end($blocks);
+
+        $content = $block->get_content();
+        $this->assertSame(4, substr_count($content->text, '<div class="container-fluid">'));
+        $this->assertSame(4, substr_count($content->text, 'class="chart-area"'));
+    }
+
+    /**
+     * Test chart labels, series renaming and combo line series.
+     */
+    public function test_build_chart_customisation(): void {
+        $block = new class extends \block_rbreport {
+            /**
+             * Expose chart construction for testing.
+             *
+             * @param array $rows Normalized rows
+             * @param array $reports Report metadata
+             * @return \core\chart_base
+             */
+            public function create_chart(array $rows, array $reports): \core\chart_base {
+                return $this->build_chart($rows, $reports, 1, true, 'Department A');
+            }
+        };
+        $block->config = (object) [
+            'charttype' => constants::CHARTTYPE_BAR,
+            'chartseriesnames' => "Malformed\nYes = Suspended",
+            'chartlineseries' => 'Suspended',
+            'chartxaxislabel' => 'Users',
+            'chartyaxislabel' => 'Count',
+        ];
+        $chart = $block->create_chart([
+            [
+                'reportkey' => 0,
+                'index' => 1,
+                'label' => 'One',
+                'value' => 2.0,
+                'group' => 'Yes',
+                'rawsplit' => 'a',
+                'split' => 'Department A',
+            ],
+        ], [
+            0 => ['header' => 'Count', 'name' => 'Users', 'grouping' => true],
+        ]);
+
+        $this->assertSame('Department A', $chart->get_title());
+        $this->assertSame('Users', $chart->get_xaxis()->get_label());
+        $this->assertSame('Count', $chart->get_yaxis()->get_label());
+        $this->assertSame('Suspended', $chart->get_series()[0]->get_label());
+        $this->assertSame(\core\chart_series::TYPE_LINE, $chart->get_series()[0]->get_type());
     }
 
     /**
