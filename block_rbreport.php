@@ -247,6 +247,7 @@ class block_rbreport extends block_base {
                     continue;
                 }
 
+                $formattedgroup = $formattedgroup === '' ? '-' : $formattedgroup;
                 if (!isset($buckets[$rawsplit])) {
                     $buckets[$rawsplit] = ['name' => $formattedsplit, 'rows' => []];
                 }
@@ -264,11 +265,29 @@ class block_rbreport extends block_base {
             }
         }
 
+        $grouporders = [];
+        foreach ($buckets as $bucket) {
+            foreach ($bucket['rows'] as $row) {
+                $reportkey = $row['reportkey'];
+                if ($reports[$reportkey]['grouping'] &&
+                        !in_array($row['group'], $grouporders[$reportkey] ?? [], true)) {
+                    $grouporders[$reportkey][] = $row['group'];
+                }
+            }
+        }
+
         ksort($buckets);
         $bucketcount = count($buckets);
         $html = '';
         foreach (array_slice($buckets, 0, self::MAX_SPLIT_CHARTS, true) as $bucket) {
-            $chart = $this->build_chart($bucket['rows'], $reports, count($reportids), $splitting, $bucket['name']);
+            $chart = $this->build_chart(
+                $bucket['rows'],
+                $reports,
+                $grouporders,
+                count($reportids),
+                $splitting,
+                $bucket['name'],
+            );
             $html .= '<div class="container-fluid">' . $OUTPUT->render_chart($chart) . '</div>';
         }
         if ($bucketcount > self::MAX_SPLIT_CHARTS) {
@@ -286,6 +305,7 @@ class block_rbreport extends block_base {
      *
      * @param array $rows Normalized report rows
      * @param array $reports Report metadata, keyed by configured report position
+     * @param array $grouporders Group names in their global series order, keyed by configured report position
      * @param int $reportcount Number of configured reports
      * @param bool $splitting Whether the chart is one of multiple split charts
      * @param string $splitname Formatted split value
@@ -294,6 +314,7 @@ class block_rbreport extends block_base {
     protected function build_chart(
         array $rows,
         array $reports,
+        array $grouporders,
         int $reportcount,
         bool $splitting = false,
         string $splitname = '',
@@ -380,14 +401,14 @@ class block_rbreport extends block_base {
                 $reportseries = [];
                 foreach ($reportrows as $row) {
                     $groupname = $row['group'];
-                    $groupname = $groupname === '' ? '-' : $groupname;
                     $reportseries[$groupname][$row['index']] =
                         ($reportseries[$groupname][$row['index']] ?? 0) + $row['value'];
                     if (!isset($labels[$row['index']])) {
                         $labels[$row['index']] = $row['label'];
                     }
                 }
-                foreach ($reportseries as $groupname => $groupseries) {
+                foreach ($grouporders[$key] ?? [] as $groupname) {
+                    $groupseries = $reportseries[$groupname] ?? [];
                     $serieskey = count($allseries);
                     $header = $groupname;
                     if ($reportcount > 1) {

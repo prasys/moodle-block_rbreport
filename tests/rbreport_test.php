@@ -162,7 +162,7 @@ final class rbreport_test extends advanced_testcase {
              * @return \core\chart_base
              */
             public function create_chart(array $rows, array $reports): \core\chart_base {
-                return $this->build_chart($rows, $reports, 1, true, 'Department A');
+                return $this->build_chart($rows, $reports, [0 => ['Yes']], 1, true, 'Department A');
             }
         };
         $block->config = (object) [
