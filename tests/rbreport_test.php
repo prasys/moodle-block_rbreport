@@ -66,8 +66,11 @@ final class rbreport_test extends advanced_testcase {
             'chartexcludeempty' => 1,
             'chartexcludezero' => 1,
             'chartlabelcolumn' => 2,
+            'chartlegend' => 'bottom',
             'chartlineseries' => 'R1',
             'chartseriesnames' => 'R1 = Report one',
+            'charttitle' => 'My chart',
+            'charttitlesize' => 'h2',
             'chartvaluecolumn' => 1,
             'chartseriescolumn' => 3,
             'chartsplitcolumn' => 4,
@@ -91,8 +94,11 @@ final class rbreport_test extends advanced_testcase {
         $this->assertEquals($data->chartexcludeempty, $config->instance->chartexcludeempty);
         $this->assertEquals($data->chartexcludezero, $config->instance->chartexcludezero);
         $this->assertEquals($data->chartlabelcolumn, $config->instance->chartlabelcolumn);
+        $this->assertEquals($data->chartlegend, $config->instance->chartlegend);
         $this->assertEquals($data->chartlineseries, $config->instance->chartlineseries);
         $this->assertEquals($data->chartseriesnames, $config->instance->chartseriesnames);
+        $this->assertEquals($data->charttitle, $config->instance->charttitle);
+        $this->assertEquals($data->charttitlesize, $config->instance->charttitlesize);
         $this->assertEquals($data->chartvaluecolumn, $config->instance->chartvaluecolumn);
         $this->assertEquals($data->chartseriescolumn, $config->instance->chartseriescolumn);
         $this->assertEquals($data->chartsplitcolumn, $config->instance->chartsplitcolumn);
@@ -136,6 +142,8 @@ final class rbreport_test extends advanced_testcase {
             'chartvaluecolumn' => 1,
             'chartseriescolumn' => -1,
             'chartsplitcolumn' => 1,
+            'charttitle' => 'My chart',
+            'charttitlesize' => 'h2',
         ]);
 
         // Reload the block so the saved configuration is applied.
@@ -147,6 +155,13 @@ final class rbreport_test extends advanced_testcase {
         $content = $block->get_content();
         $this->assertSame(4, substr_count($content->text, '<div class="container-fluid">'));
         $this->assertSame(4, substr_count($content->text, 'class="chart-area"'));
+        $this->assertSame(1, substr_count($content->text, 'class="h2 block_rbreport-chart-title"'));
+        $this->assertStringContainsString('My chart', $content->text);
+
+        unset($block->config->charttitle);
+        $block->content = null;
+        $content = $block->get_content();
+        $this->assertStringNotContainsString('block_rbreport-chart-title', $content->text);
     }
 
     /**
@@ -169,6 +184,7 @@ final class rbreport_test extends advanced_testcase {
             'charttype' => constants::CHARTTYPE_BAR,
             'chartseriesnames' => "Malformed\nYes = Suspended",
             'chartlineseries' => 'Suspended',
+            'chartlegend' => 'bottom',
             'chartxaxislabel' => 'Users',
             'chartyaxislabel' => 'Count',
         ];
@@ -191,6 +207,20 @@ final class rbreport_test extends advanced_testcase {
         $this->assertSame('Count', $chart->get_yaxis()->get_label());
         $this->assertSame('Suspended', $chart->get_series()[0]->get_label());
         $this->assertSame(\core\chart_series::TYPE_LINE, $chart->get_series()[0]->get_type());
+        $this->assertSame(['display' => true, 'position' => 'bottom'], $chart->get_legend_options());
+
+        $block->config->chartlegend = 'hidden';
+        $chart = $block->create_chart([], []);
+        $this->assertSame(['display' => false], $chart->get_legend_options());
+
+        // Core chart_base defaults to an empty array (serialized as null legend_options).
+        unset($block->config->chartlegend);
+        $chart = $block->create_chart([], []);
+        $this->assertSame([], $chart->get_legend_options());
+
+        $block->config->chartlegend = '';
+        $chart = $block->create_chart([], []);
+        $this->assertSame([], $chart->get_legend_options());
     }
 
     /**

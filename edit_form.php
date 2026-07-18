@@ -147,6 +147,45 @@ class block_rbreport_edit_form extends block_edit_form {
         $mform->setType('config_chartyaxislabel', PARAM_TEXT);
         $mform->hideIf('config_chartyaxislabel', 'config_layout', 'ne', constants::LAYOUT_CHART);
 
+        $legendoptions = [
+            '' => get_string('legenddefault', 'block_rbreport'),
+            'top' => get_string('legendtop', 'block_rbreport'),
+            'bottom' => get_string('legendbottom', 'block_rbreport'),
+            'left' => get_string('legendleft', 'block_rbreport'),
+            'right' => get_string('legendright', 'block_rbreport'),
+            'hidden' => get_string('legendhidden', 'block_rbreport'),
+        ];
+        $mform->addElement(
+            'select',
+            'config_chartlegend',
+            get_string('configchartlegend', 'block_rbreport'),
+            $legendoptions,
+        );
+        $mform->setDefault('config_chartlegend', '');
+        $mform->addHelpButton('config_chartlegend', 'configchartlegend', 'block_rbreport');
+        $mform->hideIf('config_chartlegend', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
+        $mform->addElement('text', 'config_charttitle', get_string('configcharttitle', 'block_rbreport'));
+        $mform->setType('config_charttitle', PARAM_TEXT);
+        $mform->hideIf('config_charttitle', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
+        $titlesizeoptions = [
+            'h1' => get_string('titlesizeh1', 'block_rbreport'),
+            'h2' => get_string('titlesizeh2', 'block_rbreport'),
+            'h3' => get_string('titlesizeh3', 'block_rbreport'),
+            'h4' => get_string('titlesizeh4', 'block_rbreport'),
+            'h5' => get_string('titlesizeh5', 'block_rbreport'),
+            'h6' => get_string('titlesizeh6', 'block_rbreport'),
+        ];
+        $mform->addElement(
+            'select',
+            'config_charttitlesize',
+            get_string('configcharttitlesize', 'block_rbreport'),
+            $titlesizeoptions,
+        );
+        $mform->setDefault('config_charttitlesize', 'h4');
+        $mform->hideIf('config_charttitlesize', 'config_layout', 'ne', constants::LAYOUT_CHART);
+
         $mform->addElement('textarea', 'config_chartseriesnames', get_string('configchartseriesnames', 'block_rbreport'));
         $mform->setType('config_chartseriesnames', PARAM_TEXT);
         $mform->addHelpButton('config_chartseriesnames', 'configchartseriesnames', 'block_rbreport');

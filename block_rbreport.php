@@ -279,6 +279,16 @@ class block_rbreport extends block_base {
         ksort($buckets);
         $bucketcount = count($buckets);
         $html = '';
+        $title = trim((string) ($this->config->charttitle ?? ''));
+        if ($title !== '') {
+            $size = $this->config->charttitlesize ?? 'h4';
+            $sizeclass = in_array($size, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], true) ? $size : 'h4';
+            $html .= html_writer::tag(
+                'h4',
+                format_string($title),
+                ['class' => $sizeclass . ' block_rbreport-chart-title'],
+            );
+        }
         foreach (array_slice($buckets, 0, self::MAX_SPLIT_CHARTS, true) as $bucket) {
             $chart = $this->build_chart(
                 $bucket['rows'],
@@ -346,6 +356,13 @@ class block_rbreport extends block_base {
                 break;
             default:
                 $chart = new core\chart_bar();
+        }
+
+        $legend = $this->config->chartlegend ?? '';
+        if ($legend === 'hidden') {
+            $chart->set_legend_options(['display' => false]);
+        } else if (in_array($legend, ['top', 'bottom', 'left', 'right'], true)) {
+            $chart->set_legend_options(['display' => true, 'position' => $legend]);
         }
 
         if (!empty($this->config->setminmax ?? false)) {
