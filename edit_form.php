@@ -236,6 +236,17 @@ class block_rbreport_edit_form extends block_edit_form {
         $mform->addElement('advcheckbox', 'config_chartpiepercent', get_string('configchartpiepercent', 'block_rbreport'));
         $mform->hideIf('config_chartpiepercent', 'config_layout', 'ne', constants::LAYOUT_CHART);
 
+        $mform->addElement('advcheckbox', 'config_chartpercent', get_string('configchartpercent', 'block_rbreport'));
+        $mform->setDefault('config_chartpercent', 0);
+        $mform->addHelpButton('config_chartpercent', 'configchartpercent', 'block_rbreport');
+        $mform->hideIf('config_chartpercent', 'config_layout', 'ne', constants::LAYOUT_CHART);
+        $mform->hideIf(
+            'config_chartpercent',
+            'config_charttype',
+            'in',
+            constants::CHARTTYPE_PIE . '|' . constants::CHARTTYPE_DOUGHNUT,
+        );
+
         $mform->addElement('advcheckbox', 'config_setminmax', get_string('configsetminmax', 'block_rbreport'));
         $mform->hideIf('config_setminmax', 'config_layout', 'ne', constants::LAYOUT_CHART);
 

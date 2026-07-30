@@ -68,6 +68,7 @@ final class rbreport_test extends advanced_testcase {
             'chartlabelcolumn' => 2,
             'chartlegend' => 'bottom',
             'chartlineseries' => 'R1',
+            'chartpercent' => 1,
             'chartseriesnames' => 'R1 = Report one',
             'charttitle' => 'My chart',
             'charttitlesize' => 'h2',
@@ -96,6 +97,7 @@ final class rbreport_test extends advanced_testcase {
         $this->assertEquals($data->chartlabelcolumn, $config->instance->chartlabelcolumn);
         $this->assertEquals($data->chartlegend, $config->instance->chartlegend);
         $this->assertEquals($data->chartlineseries, $config->instance->chartlineseries);
+        $this->assertEquals($data->chartpercent, $config->instance->chartpercent);
         $this->assertEquals($data->chartseriesnames, $config->instance->chartseriesnames);
         $this->assertEquals($data->charttitle, $config->instance->charttitle);
         $this->assertEquals($data->charttitlesize, $config->instance->charttitlesize);
@@ -177,7 +179,7 @@ final class rbreport_test extends advanced_testcase {
              * @return \core\chart_base
              */
             public function create_chart(array $rows, array $reports): \core\chart_base {
-                return $this->build_chart($rows, $reports, [0 => ['Yes']], 1, true, 'Department A');
+                return $this->build_chart($rows, $reports, [0 => ['Yes', 'No']], 1, true, 'Department A');
             }
         };
         $block->config = (object) [
@@ -221,6 +223,39 @@ final class rbreport_test extends advanced_testcase {
         $block->config->chartlegend = '';
         $chart = $block->create_chart([], []);
         $this->assertSame([], $chart->get_legend_options());
+
+        $percentrows = [
+            ['reportkey' => 0, 'index' => 1, 'label' => 'One', 'value' => 1.0, 'group' => 'Yes'],
+            ['reportkey' => 0, 'index' => 1, 'label' => 'One', 'value' => 3.0, 'group' => 'No'],
+            ['reportkey' => 0, 'index' => 2, 'label' => 'Two', 'value' => 2.0, 'group' => 'Yes'],
+            ['reportkey' => 0, 'index' => 2, 'label' => 'Two', 'value' => 2.0, 'group' => 'No'],
+        ];
+        $block->config->chartpercent = 1;
+        $chart = $block->create_chart($percentrows, [
+            0 => ['header' => 'Count', 'name' => 'Users', 'grouping' => true],
+        ]);
+        $series = $chart->get_series();
+        foreach (array_keys($chart->get_labels()) as $index) {
+            $this->assertEqualsWithDelta(
+                100.0,
+                $series[0]->get_values()[$index] + $series[1]->get_values()[$index],
+                0.01,
+            );
+        }
+
+        $singlerows = [
+            ['reportkey' => 0, 'index' => 1, 'label' => 'One', 'value' => 2.0, 'group' => '-'],
+            ['reportkey' => 0, 'index' => 2, 'label' => 'Two', 'value' => 3.0, 'group' => '-'],
+        ];
+        $reports = [
+            0 => ['header' => 'Count', 'name' => 'Users', 'grouping' => false],
+        ];
+        $chart = $block->create_chart($singlerows, $reports);
+        $this->assertEqualsWithDelta(100.0, array_sum($chart->get_series()[0]->get_values()), 0.01);
+
+        $block->config->chartpercent = 0;
+        $chart = $block->create_chart($singlerows, $reports);
+        $this->assertSame([2.0, 3.0], $chart->get_series()[0]->get_values());
     }
 
     /**

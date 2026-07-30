@@ -191,6 +191,9 @@ class block_rbreport extends block_base {
         $splitidx = (int) ($this->config->chartsplitcolumn ?? -1);
         $chartexcludeempty = !empty($this->config->chartexcludeempty ?? false);
         $chartexcludezero = !empty($this->config->chartexcludezero ?? false);
+        $percentmode = ($charttype === constants::CHARTTYPE_PIE || $charttype === constants::CHARTTYPE_DOUGHNUT)
+            ? !empty($this->config->chartpiepercent ?? false)
+            : !empty($this->config->chartpercent ?? false);
         $splitting = $splitidx >= 0;
         $reportids = $this->get_report_ids();
         $reports = [];
@@ -298,7 +301,15 @@ class block_rbreport extends block_base {
                 $splitting,
                 $bucket['name'],
             );
-            $html .= '<div class="container-fluid">' . $OUTPUT->render_chart($chart) . '</div>';
+            if ($percentmode) {
+                $charthtml = $OUTPUT->render_from_template('block_rbreport/chart', (object) [
+                    'chartdata' => json_encode($chart),
+                    'withtable' => true,
+                ]);
+            } else {
+                $charthtml = $OUTPUT->render_chart($chart);
+            }
+            $html .= '<div class="container-fluid">' . $charthtml . '</div>';
         }
         if ($bucketcount > self::MAX_SPLIT_CHARTS) {
             $html .= html_writer::div(
@@ -332,6 +343,8 @@ class block_rbreport extends block_base {
         $charttype = $this->config->charttype ?? constants::CHARTTYPE_BAR;
         $cumulative = !empty($this->config->cumulative ?? false);
         $chartpiepercent = !empty($this->config->chartpiepercent ?? false);
+        $chartpercent = !empty($this->config->chartpercent ?? false) &&
+            $charttype !== constants::CHARTTYPE_PIE && $charttype !== constants::CHARTTYPE_DOUGHNUT;
         switch ($charttype) {
             case constants::CHARTTYPE_BAR:
                 $chart = new core\chart_bar();
@@ -486,6 +499,30 @@ class block_rbreport extends block_base {
                     $series[$labelkey] = $runningtotal;
                 }
             }
+            $allseries[$key] = $series;
+        }
+        if ($chartpercent && count($allseries) >= 2) {
+            foreach (array_keys($labels) as $labelkey) {
+                $total = 0;
+                foreach ($allseries as $series) {
+                    $total += $series[$labelkey];
+                }
+                foreach ($allseries as $key => $series) {
+                    $allseries[$key][$labelkey] = $total > 0
+                        ? floatval(number_format(($series[$labelkey] / $total) * 100, 2))
+                        : 0;
+                }
+            }
+        } else if ($chartpercent && count($allseries) === 1) {
+            $key = array_key_first($allseries);
+            $total = $cumulative ? end($allseries[$key]) : array_sum($allseries[$key]);
+            foreach ($allseries[$key] as $labelkey => $value) {
+                $allseries[$key][$labelkey] = $total > 0
+                    ? floatval(number_format(($value / $total) * 100, 2))
+                    : 0;
+            }
+        }
+        foreach ($allseries as $key => $series) {
             $originalheader = $headers[$key];
             $header = $this->get_chart_series_name($originalheader);
             $seriesobj = new core\chart_series($header, array_values($series));

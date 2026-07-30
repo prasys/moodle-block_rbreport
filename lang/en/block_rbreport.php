@@ -45,6 +45,10 @@ $string['configchartlineseries_help'] = 'Comma-separated series names to render 
     'Names can be either the original or renamed series names.';
 $string['configchartmax'] = 'Maximum';
 $string['configchartmin'] = 'Minimum';
+$string['configchartpercent'] = 'Display values as percentages';
+$string['configchartpercent_help'] = 'Values are converted to percentages. With multiple series, each value becomes ' .
+    'its share of that category\'s total, so stacked bars total 100%. With a single series, each value becomes its ' .
+    'share of the overall total. The value axis and tooltips display a % suffix.';
 $string['configchartpiepercent'] = 'Use percentage for Pie charts';
 $string['configchartseriescolumn'] = 'Group series by';
 $string['configchartseriescolumn_help'] = 'Each distinct value of this column becomes its own chart series. ' .
