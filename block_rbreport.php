@@ -54,6 +54,13 @@ class block_rbreport extends block_base {
             return $this->content;
         }
 
+        if (!has_capability('block/rbreport:view', $this->context)) {
+            $this->content = new stdClass();
+            $this->content->text = '';
+            $this->content->footer = '';
+            return $this->content;
+        }
+
         $this->content = new stdClass();
         $this->content->text = '';
 

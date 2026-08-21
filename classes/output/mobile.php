@@ -46,7 +46,8 @@ class mobile {
         $reportid = is_array($reportids) ? (int) reset($reportids) : (int) $reportids;
         try {
             $report = \core_reportbuilder\manager::get_report_from_id($reportid);
-            if (\core_reportbuilder\permission::can_view_report($report->get_report_persistent())) {
+            if (has_capability('block/rbreport:view', \context_block::instance($blockinstance->instance->id)) &&
+                    \core_reportbuilder\permission::can_view_report($report->get_report_persistent())) {
                 $url = new \moodle_url('/reportbuilder/view.php', ['id' => $reportid]);
                 $data['url'] = $url->out(false);
                 $data['title'] = $blockinstance->title;

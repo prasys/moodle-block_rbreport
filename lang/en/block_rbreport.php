@@ -93,6 +93,7 @@ $string['pluginname'] = 'Report';
 $string['privacy:metadata:block'] = 'The Report block stores all of its data within the block subsystem.';
 $string['rbreport:addinstance'] = 'Add a new Report block';
 $string['rbreport:myaddinstance'] = 'Add a new Report block to Dashboard';
+$string['rbreport:view'] = 'View report block';
 $string['reportnotsetmessage'] = 'Please configure this block and select which report it should display.';
 $string['seriescolumnnone'] = 'None (one series per report)';
 $string['splitcolumnnone'] = 'None (single chart)';

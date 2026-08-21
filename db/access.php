@@ -44,4 +44,14 @@ $capabilities = [
 
         'clonepermissionsfrom' => 'moodle/site:manageblocks',
     ],
+    'block/rbreport:view' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_BLOCK,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+            'coursecreator' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+        ],
+    ],
 ];
